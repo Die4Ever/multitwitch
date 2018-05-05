@@ -1,0 +1,442 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <title>Wow Much Twitch</title>
+    <script type="text/javascript">var _gaq = _gaq || []; _gaq.push(['_setAccount', 'UA-13099891-1']); _gaq.push(['_trackPageview']); (function () { var ga = document.createElement('script'); ga.type = 'text/javascript'; ga.async = true; ga.src = ('https:' == document.location.protocol ? 'https://ssl' : 'http://www') + '.google-analytics.com/ga.js'; var s = document.getElementsByTagName('script')[0]; s.parentNode.insertBefore(ga, s); })();</script>
+    <script src="//ajax.googleapis.com/ajax/libs/jquery/1.10.2/jquery.min.js"></script>
+    <script src="//ajax.googleapis.com/ajax/libs/jqueryui/1.10.3/jquery-ui.min.js"></script>
+    <link href="//netdna.bootstrapcdn.com/font-awesome/3.2.1/css/font-awesome.css" rel="stylesheet">
+
+    <style>body {background:black; color:white;position:absolute;bottom:0;width:100%;height:100%;overflow:hidden;padding:0;margin:0;}
+            .videos { width:86%; height:100%;float:left;position:absolute;
+                      -webkit-touch-callout: none;-webkit-user-select: none;-khtml-user-select: none;-moz-user-select: none;-ms-user-select: none;user-select: none;
+            }
+            .videos > iframe {display: inline-block;position:relative;}
+            .videos .videoframe {display: inline-block;position:relative;cursor:move;background:#313;box-sizing:border-box;padding:0px;
+                                 -webkit-touch-callout: none;-webkit-user-select: none;-khtml-user-select: none;-moz-user-select: none;-ms-user-select: none;user-select: none;
+            }
+            .videos .videoframe iframe {width:100%;height:100%;box-sizing:border-box;margin:auto;}
+            .expandbutton{position:fixed;top:7px;right:0;cursor:pointer;font-size:20px;z-index:100002;color:gray;}
+            .rightpane{float:right;width:14%;height:110%;display:block;padding:1em;padding-bottom:5em;box-sizing:border-box;z-index:100001;position:relative;background:#111;overflow-y:auto;}
+            .recentstream{cursor:pointer;}
+            .layout{cursor:pointer;}
+    </style>
+</head>
+<body onload="OnBodyLoad();" class='theme-dark homepage'>
+
+    <span class="expandbutton"><i class="icon-fixed-width icon-arrow-right"></i></span>
+    <div class="rightpane"><br/><div><input class="addstreaminput" placeholder="Add Stream" /></div><div class="recentstreams"><h2>Recent Streams</h2></div>
+        <div class="layouts"><h2>Layouts</h2>
+            <div class="layout">Tile</div>
+            <div class="soonlayout">Big View (coming soon)</div>
+            <div class="soonlayout">Custom (coming soon)</div>
+        </div>
+        <h2>Zoom</h2><div class="or"><input type="range" class="overlaprange" min="0" max="60" value="0" /></div>
+        <br/><br/><div>todo: saving preferences, big view, chat in the right pane, combined chat view, custom layout mode, closing streams, stream list in url, rearranging stream order, cross-tab functionality, autocomplete on adding streams</div>
+    </div>
+    <div class="videos"></div>
+
+    <script type="text/javascript">
+        var views = [];
+        var recents = {};
+        var layout = 'tile';
+        var isDragging = false;
+        var isSizingX = false;
+        var isSizingY = false;
+        var draggingElement = null;
+        var startDragX = 0;
+        var startDragY = 0;
+        var overlappercent = 0;
+
+        var layouts = {
+            'tileold': function () {
+                var videos = $('.videos .videoframe');
+                if (videos.length == 0) return;
+                //var div = Math.log2(videos.length) + 1;
+                var div = Math.sqrt(videos.length);
+                //div = Math.ceil(div);
+                var width = 100 / Math.ceil(div);
+                var height = 100 / Math.round(div);
+                if (videos.length <= 2) height = 100;
+                videos.each(function () {
+                    $(this).css('position', 'relative');
+                    $(this).css('height', height + '%');
+                    $(this).css('width', width + '%');
+                    $(this).css('margin', '0');
+                    $(this).css('top', '');
+                    $(this).css('bottom', '');
+                    $(this).css('left', '');
+                    $(this).css('right', '');
+                });
+            },
+            'tile': function () {
+                var videos = $('.videos .videoframe');
+                if (videos.length == 0) return;
+                //var div = Math.log2(videos.length) + 1;
+                var div = Math.sqrt(videos.length);
+                //div = Math.ceil(div);
+                var width = 100 / Math.ceil(div);
+                var height = 100 / Math.ceil(div);
+                //if (videos.length == 2) height = 50;
+                var h = $('.videos').height();
+                h = $(window).height();
+                var w = $('.videos').width();
+
+                var counter = 0;
+                var rows = Math.ceil(div);
+                var cols = Math.ceil(div);
+                if (1 || w / h > 1.8 || w / h < 1.7) {
+                    rows = div * (16 / 9) / (w / h);
+                    cols = div * (9 / 16) / (h / w);
+                    var r = rows;
+                    var c = cols;
+                    rows = Math.round(rows);
+                    cols = Math.round(cols);
+                    if (c>r) {
+                        while (videos.length > (cols) * rows) {
+                            cols++;
+                        }
+                    } else {
+                        while (videos.length > (rows) * cols) {
+                            rows++;
+                        }
+                    }
+                }
+                while (videos.length <= (rows - 1) * cols) {
+                    rows--;
+                }
+                while (videos.length <= (cols - 1) * rows) {
+                    cols--;
+                }
+
+                width = w / cols;
+                height = h / rows;
+                width *= (100 + overlappercent)/100;//1.3;
+                height *= (100 + overlappercent) / 100;//1.3;
+                height = Math.min(height, width * (9/16) );
+                width = Math.min(width, height * (16/9) );
+                //height = width * 0.5625;
+
+                videos.each(function () {
+                    $(this).css('position', 'absolute');
+                    $(this).css('width', width + 'px');
+                    $(this).css('height', height + 'px');
+                    var x = counter % cols;
+                    var y = Math.floor(counter / cols);
+                    x *= w / cols;
+                    y *= h / rows;
+
+                    //$(this).css('top', width + 'px');
+
+                    /*$(this).css('height', (height + height / 3) + '%');
+                    $(this).css('width', (width + width / 2.5) + '%');
+                    $(this).css('margin-right', (height / -2.5) + '%');
+                    $(this).css('margin-bottom', (height / -5) + '%');*/
+
+                    x -= (width * 0.2) * (overlappercent / 100);
+                    y -= (height * 0.1) * (overlappercent / 100);
+                    if (videos.length == 2 && rows==1 && cols==2 && parseInt($(this).attr('data-priority')) % 2 == 1) {
+                        //$(this).css('top', '');
+                        //$(this).css('top', (height / 2) + '%');
+                        //$(this).css('left', (height / -5) + '%');
+                        //y += (h - height);
+                        y = h - height;
+                        //x -= (width * 0.25) * (overlappercent / 100);
+                        x = w - width;
+                        //x -= (width * 0.2)*(overlappercent/100);
+                    } else if (videos.length == 2 && rows == 2 && cols == 1 && parseInt($(this).attr('data-priority')) % 2 == 1) {
+                        x += (w - width) + (width * 0.4) * (overlappercent / 100);
+                        y -= (height * 0.5) * (overlappercent / 100);
+                        //y = h / rows;
+                    } else if (videos.length == 2) {
+                        //$(this).css('top', (height / -10) + '%');
+                        //$(this).css('left', '');
+                    } else {
+                        //$(this).css('top', '');
+                        //$(this).css('left', '');
+                    }
+
+                    $(this).css('left', x + 'px');
+                    $(this).css('top', y + 'px');
+                    //if(parseInt($(this).attr('data-priority')) > 0 ) $(this).css('margin', (height / -8) + '%');
+                    counter++;
+                });
+                /*videos.each(function () {
+                    $(this).css('height', (height+height/ 3) + '%');
+                    $(this).css('width', (width + width / 2.5) + '%');
+                    $(this).css('margin-right', (height / -2.5) + '%');
+                    $(this).css('margin-bottom', (height / -5) + '%');
+                    if (videos.length == 2 && parseInt($(this).attr('data-priority')) % 2 == 1) {
+                        //$(this).css('top', '');
+                        $(this).css('top', (height / 2) + '%');
+                        $(this).css('left', (height / -5) + '%');
+                    } else if(videos.length==2) {
+                        $(this).css('top', (height / -10) + '%');
+                        $(this).css('left', '');
+                    } else {
+                        $(this).css('top', '');
+                        $(this).css('left', '');
+                    }
+                    //if(parseInt($(this).attr('data-priority')) > 0 ) $(this).css('margin', (height / -8) + '%');
+                });*/
+            }
+        };
+
+        function ApplyLayout()
+        {
+            console.log('applying layout');
+            if (layouts.hasOwnProperty(layout)) {
+                layouts[layout]();
+            } else {
+                console.log('unknown layout ' + layout + '!');
+            }
+        }
+
+        function CheckRecents(force)
+        {
+            var storedrecents = localStorage.getItem("recents");
+            if (!storedrecents || storedrecents == '') {
+                storedrecents = '[]';
+            }
+            var defaults = [{ channel: "morgalor", lasttime: "1" }, { channel: "GamesDoneQuick", lasttime: "1" }, { channel: "MegaBlast98", lasttime: "1" }, { channel: "ESL_SC2", lasttime: "1" }, { channel: "ESL_Overwatch", lasttime: "1" },
+            { channel: "cheese05", lasttime: "1" }, { channel: "RetroGamingLiveTV", lasttime: "1" }, { channel: "GOGcom", lasttime: "1" }, { channel: "360Chrism", lasttime: "1" }, { channel: "SpikeVegeta", lasttime: "1" },
+            { channel: "BaseTradeTV", lasttime: "1" }, { channel: "ByunPrime", lasttime: "1" }];
+            //storedrecents='[]';
+            //storedrecents = JSON.stringify([{ channel: "morgalor", lasttime: "1" }, { channel: "GamesDoneQuick", lasttime: "1" }]);
+            storedrecents = $.parseJSON(storedrecents);
+            storedrecents = [].concat(defaults,storedrecents);
+            console.log(storedrecents);
+            var change = false;
+            for (var i = 0; i < storedrecents.length; i++) {
+                var sr = storedrecents[i];
+                if (recents.hasOwnProperty(sr.channel.toLowerCase())) {
+                    if (sr.lasttime > recents[sr.channel.toLowerCase()].lasttime) {
+                        recents[sr.channel.toLowerCase()].lasttime = sr.lasttime;
+                        change = true;
+                    }
+                } else {
+                    recents[sr.channel.toLowerCase()] = sr;
+                    change = true;
+                }
+            }
+
+            if (force) change = true;
+            if (change == false) return;
+
+            var recents_a = [];
+            for (var r in recents) {
+                if (r != r.toLowerCase()) {
+                    delete recents[r];
+                    continue;
+                }
+                recents_a.push(recents[r]);
+            }
+
+            recents_a.sort(function (a, b) { return parseInt(b.lasttime) - parseInt(a.lasttime); });
+            while (recents_a.length > 15) recents_a.pop();
+            localStorage.setItem("recents", JSON.stringify(recents_a));
+
+            $('.recentstreams').html('');
+            for (var i = 0; i < recents_a.length; i++) {
+                $('.recentstreams').append('<div class="recentstream">' + recents_a[i].channel + '</div>');
+            }
+            $('.recentstream').click(function () { AddStream($(this).text()); ApplyLayout(); $(this).val(''); });
+        }
+
+        function AddStream(channel)
+        {
+            var m=channel.match(/twitch\.tv\/(.+)/);
+            if (m && m.length==2) {
+                channel = m[1];
+            }
+            console.log('adding stream ' + channel);
+            views.push({ channel: channel });
+            $('.videos').append(
+                '<div class="videoframe" style="z-index:' + (10000 - views.length) + ';" data-priority="' + (views.length - 1) + '"><iframe src="https://player.twitch.tv/?channel='
+                + channel + '&volume=0.00&muted" frameborder="0" scrolling="no" allowfullscreen ></iframe></div>');
+
+            var lasttime = (new Date()).getTime();
+            recents[channel.toLowerCase()] = { channel: channel, lasttime: lasttime };
+            CheckRecents(true);
+
+            $(".videos .videoframe").off('mousedown mousemove mouseup mouseover mouseout');
+            $('.videos').off('mousemove');
+            $('.videos').mousemove(function (e) {
+                if (isDragging == false) return;
+                if (!draggingElement) {
+                    isDragging = false;
+                    return;
+                }
+                if (this != draggingElement) {
+                    $(draggingElement).find('iframe').css('width', '');
+                    $(draggingElement).find('iframe').css('height', '');
+                    isDragging = false;
+                    return;
+                }
+            });
+
+            $(".videos .videoframe")
+            .mouseover(function (e) {
+                $(this).css('padding', '50px');
+                $(this).find('iframe').css('padding', '50px');
+                $(this).css('z-index', '10000');
+                //$(this).find('iframe').css('width', '75%');
+                //$(this).find('iframe').css('height', '75%');
+            })
+            .mouseout(function (e) {
+                //$(this).find('iframe').css('width', '');
+                //$(this).find('iframe').css('height', '');
+                $(this).css('padding', '');
+                $(this).find('iframe').css('padding', '');
+                $(this).css('z-index', 10000 - 1 - parseInt($(this).attr('data-priority')));
+
+                if (isDragging) {
+                    isDragging = false;
+                    draggingElement = null;
+                    //$(this).css('padding', '');
+                    //$(this).find('iframe').css('width', '');
+                    //$(this).find('iframe').css('height', '');
+                    e.stopPropagation();
+                }
+            });
+
+
+            $(".videos .videoframe")
+            .mousedown(function (e) {
+                isDragging = true;
+
+                var position = $(this).offset();
+                var w = $(this).width();
+                var h = $(this).height();
+
+                startDragX = e.pageX - (position.left);
+                startDragY = e.pageY - (position.top);
+                //startDragX = Math.round( ((e.pageX - position.left)*4 + (w / 10)) / 5);
+                //startDragY = Math.round(((e.pageY - position.top)*4 + (h / 10)) / 5);
+
+                draggingElement = this;
+
+                $(this).css('position', 'absolute');
+                //$(this).css('padding', '100px');
+                //$(this).css('padding', '50px');
+                //$(this).find('iframe').css('padding', '100px');
+                //$(this).find('iframe').css('width', '10px');
+                //$(this).find('iframe').css('height', '10px');
+
+                var x = e.pageX - startDragX;
+                var y = e.pageY - startDragY;
+                $(this).css('top', y);
+                $(this).css('left', x);
+                e.stopPropagation();
+            })
+            .mousemove(function (e) {
+                if (isDragging == false) return;
+                if (!draggingElement) {
+                    isDragging = false;
+                    return;
+                }
+                if (this != draggingElement) {
+                    //$(draggingElement).find('iframe').css('width', '');
+                    //$(draggingElement).find('iframe').css('height', '');
+                    //$(draggingElement).css('padding', '');
+                    //$(draggingElement).find('iframe').css('padding', '');
+                    isDragging = false;
+                    return;
+                }
+                e.stopPropagation();
+
+                var w = $(this).width();
+                var h = $(this).height();
+
+                var x = e.pageX - startDragX;
+                var y = e.pageY - startDragY;
+                $(this).css('top', y);
+                $(this).css('left', x);
+                //console.log('move!');
+            })
+            .mouseup(function (e) {
+                var wasDragging = isDragging;
+                isDragging = false;
+                if (wasDragging) {
+                    var x = e.pageX - startDragX;
+                    var y = e.pageY - startDragY;
+                    $(this).css('top', y);
+                    $(this).css('left', x);
+
+                    draggingElement = null;
+                    //$(this).css('padding', '');
+                    //$(this).find('iframe').css('padding', '');
+                    //$(this).find('iframe').css('width', '');
+                    //$(this).find('iframe').css('height', '');
+                    e.stopPropagation();
+                }
+            });
+        }
+
+        function OnBodyLoad()
+        {
+            if (typeof (Storage) !== "undefined") {
+                layout = localStorage.getItem("layout");
+                if (!layout || layout == '') layout = 'tile';
+            }
+            CheckRecents(true);
+            setInterval(function () { CheckRecents() }, 10000);
+
+            $(window).on('resize', function () {
+                ApplyLayout();
+                //<iframe src="https://player.twitch.tv/?channel=morgalor" frameborder="0" scrolling="no" height="378" width="620"></iframe><a href="https://www.twitch.tv/morgalor?tt_medium=live_embed&tt_content=text_link" style="padding:2px 0px 4px; display:block; width:345px; font-weight:normal; font-size:10px; text-decoration:underline;">Watch live video from Morgalor on www.twitch.tv</a>
+            });
+            $('.expandbutton').click(function () {
+                if ($('.rightpane').css('display') == 'none') {
+                    $('.rightpane').css('display', 'block');
+                    $('.videos').css('width', '86%');
+                    $('.expandbutton i').attr('class', 'icon-fixed-width icon-arrow-right');
+                } else {
+                    $('.rightpane').css('display', 'none');
+                    $('.videos').css('width', '100%');
+                    $('.expandbutton i').attr('class', 'icon-fixed-width icon-arrow-left');
+                }
+                ApplyLayout();
+            });
+            $('.videos').html('');
+            //$('.videos').append('<span class="expandbutton"><i class="icon-fixed-width icon-home"></i></span>');
+            //AddStream('morgalor');
+            //AddStream('deuceler');
+            ApplyLayout();
+
+            /*$('.recentstreams').append('<div class="recentstream">megablast98</div>');
+            $('.recentstreams').append('<div class="recentstream">cheese05</div>');
+            $('.recentstreams').append('<div class="recentstream">gamesdonequick</div>');
+            $('.recentstreams').append('<div class="recentstream">ESL_SC2</div>');
+            $('.recentstreams').append('<div class="recentstream">ESL_Overwatch</div>');
+            $('.recentstreams').append('<div class="recentstream">RetroGamingLiveTV</div>');
+            $('.recentstreams').append('<div class="recentstream">GOGcom</div>');
+            $('.recentstreams').append('<div class="recentstream">TASReplay</div>');
+
+            $('.recentstream').click(function () { AddStream($(this).text()); ApplyLayout(); $(this).val(''); });*/
+
+            $('.layout').click(function () { layout = $(this).text().toLowerCase(); ApplyLayout(); });
+            $('.addstreaminput').submit(function () { AddStream($(this).val()); ApplyLayout(); });
+            $('.addstreaminput').keyup(function (e) {
+                if (e.keyCode == 13) {
+                    AddStream($(this).val());
+                    ApplyLayout();
+                    $(this).val('');
+                }
+            });
+
+            $('input.overlaprange').val(overlappercent);
+
+            $('input.overlaprange').change(function () {
+                overlappercent = parseInt($(this).val());
+                console.log('overlappercent == ' + overlappercent + '%');
+                ApplyLayout();
+            });
+        }
+
+    </script>
+</body>
+
+</html>
