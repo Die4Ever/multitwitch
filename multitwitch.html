@@ -22,7 +22,7 @@
             margin: 0;
         }
 
-        .videos {
+        .frames {
             width: 86%;
             height: 100%;
             float: left;
@@ -35,12 +35,12 @@
             user-select: none;
         }
 
-            .videos > iframe {
+            .frames > iframe {
                 display: inline-block;
                 position: relative;
             }
 
-            .videos .videoframe {
+            .frames .frame {
                 display: inline-block;
                 position: relative;
                 cursor: move;
@@ -55,7 +55,7 @@
                 user-select: none;
             }
 
-                .videos .videoframe iframe {
+                .frames .frame iframe {
                     width: 100%;
                     height: 100%;
                     box-sizing: border-box;
@@ -109,51 +109,160 @@
         <h2>Zoom</h2><div class="or"><input type="range" class="overlaprange" min="0" max="60" value="0" /></div>
         <br /><br /><div>todo: saving preferences, big view, chat in the right pane, combined chat view, custom layout mode, closing streams, stream list in url, rearranging stream order, cross-tab functionality, autocomplete on adding streams</div>
     </div>
-    <div class="videos"></div>
+    <div class="frames"></div>
 </body>
 
 </html>
 
 <script type="text/javascript">
-    var views = [];
-    var recents = {};
-    var layout = 'tile';
-    var isDragging = false;
-    var isSizingX = false;
-    var isSizingY = false;
-    var draggingElement = null;
-    var startDragX = 0;
-    var startDragY = 0;
-    var overlappercent = 0;
 
-    var layouts = {
-        'tileold': function () {
-            var videos = $('.videos .videoframe');
-            if (videos.length == 0) return;
-            var div = Math.sqrt(videos.length);
-            var width = 100 / Math.ceil(div);
-            var height = 100 / Math.round(div);
-            if (videos.length <= 2) height = 100;
-            videos.each(function () {
-                $(this).css('position', 'relative');
-                $(this).css('height', height + '%');
-                $(this).css('width', width + '%');
-                $(this).css('margin', '0');
-                $(this).css('top', '');
-                $(this).css('bottom', '');
-                $(this).css('left', '');
-                $(this).css('right', '');
+    class BaseLayout {
+        constructor() {
+            this.name = 'BaseLayout';
+            this.isDragging = false;
+            this.isSizingX = false;
+            this.isSizingY = false;
+            this.draggingElement = null;
+            this.startDragX = 0;
+            this.startDragY = 0;
+            this.overlappercent = 0;
+            this.views = [];
+        }
+
+        AddFrame(url, frame) {
+            var self = this;
+
+            console.log('adding frame ' + url);
+            self.views.push({ url: url });
+
+            frame.css({ 'z-index': (10000 - self.views.length) }).attr('data-priority', self.views.length - 1);
+            $('.frames').append(frame);
+
+            $(".frames .frame").off('mousedown mousemove mouseup mouseover mouseout');
+            $('.frames').off('mousemove');
+            $('.frames').mousemove(function (e) {
+                if (self.isDragging == false) return;
+                if (!self.draggingElement) {
+                    self.isDragging = false;
+                    return;
+                }
+                if (this != self.draggingElement) {
+                    $(self.draggingElement).find('iframe').css('width', '');
+                    $(self.draggingElement).find('iframe').css('height', '');
+                    self.isDragging = false;
+                    return;
+                }
             });
-        },
-        'tile': function () {
-            var videos = $('.videos .videoframe');
-            if (videos.length == 0) return;
-            var div = Math.sqrt(videos.length);
+
+            $(".frames .frame")
+                .mouseover(function (e) {
+                    $(this).css('padding', '50px');
+                    $(this).find('iframe').css('padding', '50px');
+                    $(this).css('z-index', '10000');
+                })
+                .mouseout(function (e) {
+                    $(this).css('padding', '');
+                    $(this).find('iframe').css('padding', '');
+                    $(this).css('z-index', 10000 - 1 - parseInt($(this).attr('data-priority')));
+
+                    if (self.isDragging) {
+                        self.isDragging = false;
+                        self.draggingElement = null;
+                        e.stopPropagation();
+                    }
+                });
+
+
+            $(".frames .frame")
+                .mousedown(function (e) {
+                    self.isDragging = true;
+
+                    var position = $(this).offset();
+                    var w = $(this).width();
+                    var h = $(this).height();
+
+                    self.startDragX = e.pageX - (position.left);
+                    self.startDragY = e.pageY - (position.top);
+
+                    self.draggingElement = this;
+
+                    $(this).css('position', 'absolute');
+
+                    var x = e.pageX - self.startDragX;
+                    var y = e.pageY - self.startDragY;
+                    $(this).css('top', y);
+                    $(this).css('left', x);
+                    e.stopPropagation();
+                })
+                .mousemove(function (e) {
+                    if (self.isDragging == false) return;
+                    if (!self.draggingElement) {
+                        self.isDragging = false;
+                        return;
+                    }
+                    if (this != self.draggingElement) {
+                        self.isDragging = false;
+                        return;
+                    }
+                    e.stopPropagation();
+
+                    var w = $(this).width();
+                    var h = $(this).height();
+
+                    var x = e.pageX - self.startDragX;
+                    var y = e.pageY - self.startDragY;
+                    $(this).css('top', y);
+                    $(this).css('left', x);
+                })
+                .mouseup(function (e) {
+                    var wasDragging = self.isDragging;
+                    self.isDragging = false;
+                    if (wasDragging) {
+                        var x = e.pageX - self.startDragX;
+                        var y = e.pageY - self.startDragY;
+                        $(this).css('top', y);
+                        $(this).css('left', x);
+
+                        self.draggingElement = null;
+                        e.stopPropagation();
+                    }
+                });
+        }
+
+        LayoutFrame(el, frames, width, height, counter, cols, rows, w, h) {
+            el.css('position', 'absolute');
+            el.css('width', width + 'px');
+            el.css('height', height + 'px');
+            var x = counter % cols;
+            var y = Math.floor(counter / cols);
+            x *= w / cols;
+            y *= h / rows;
+
+            x -= (width * 0.2) * (this.overlappercent / 100);
+            y -= (height * 0.1) * (this.overlappercent / 100);
+            if (frames.length == 2 && rows == 1 && cols == 2 && parseInt(el.attr('data-priority')) % 2 == 1) {
+                y = h - height;
+                x = w - width;
+            } else if (frames.length == 2 && rows == 2 && cols == 1 && parseInt(el.attr('data-priority')) % 2 == 1) {
+                x += (w - width) + (width * 0.4) * (this.overlappercent / 100);
+                y -= (height * 0.5) * (this.overlappercent / 100);
+            } else if (frames.length == 2) {
+            } else {
+            }
+
+            el.css('left', x + 'px');
+            el.css('top', y + 'px');
+        };
+
+        ApplyLayout() {
+            var frames = $('.frames .frame');
+            if (frames.length == 0) return;
+            var div = Math.sqrt(frames.length);
             var width = 100 / Math.ceil(div);
             var height = 100 / Math.ceil(div);
-            var h = $('.videos').height();
+            var h = $('.frames').height();
             h = $(window).height();
-            var w = $('.videos').width();
+            var w = $('.frames').width();
 
             var counter = 0;
             var rows = Math.ceil(div);
@@ -165,65 +274,65 @@
                 var c = cols;
                 rows = Math.round(rows);
                 cols = Math.round(cols);
-                if (c > r) {
-                    while (videos.length > (cols) * rows) {
+                if (c < r) {
+                    while (frames.length > (cols) * rows) {
                         cols++;
                     }
                 } else {
-                    while (videos.length > (rows) * cols) {
+                    while (frames.length > (rows) * cols) {
                         rows++;
                     }
                 }
             }
-            while (videos.length <= (rows - 1) * cols) {
+            while (frames.length <= (rows - 1) * cols) {
                 rows--;
             }
-            while (videos.length <= (cols - 1) * rows) {
+            while (frames.length <= (cols - 1) * rows) {
                 cols--;
             }
 
             width = w / cols;
             height = h / rows;
-            width *= (100 + overlappercent) / 100;
-            height *= (100 + overlappercent) / 100;
+            width *= (100 + this.overlappercent) / 100;
+            height *= (100 + this.overlappercent) / 100;
             height = Math.min(height, width * (9 / 16));
             width = Math.min(width, height * (16 / 9));
 
-            videos.each(function () {
-                $(this).css('position', 'absolute');
-                $(this).css('width', width + 'px');
-                $(this).css('height', height + 'px');
-                var x = counter % cols;
-                var y = Math.floor(counter / cols);
-                x *= w / cols;
-                y *= h / rows;
-
-                x -= (width * 0.2) * (overlappercent / 100);
-                y -= (height * 0.1) * (overlappercent / 100);
-                if (videos.length == 2 && rows == 1 && cols == 2 && parseInt($(this).attr('data-priority')) % 2 == 1) {
-                    y = h - height;
-                    x = w - width;
-                } else if (videos.length == 2 && rows == 2 && cols == 1 && parseInt($(this).attr('data-priority')) % 2 == 1) {
-                    x += (w - width) + (width * 0.4) * (overlappercent / 100);
-                    y -= (height * 0.5) * (overlappercent / 100);
-                } else if (videos.length == 2) {
-                } else {
-                }
-
-                $(this).css('left', x + 'px');
-                $(this).css('top', y + 'px');
+            var self = this;
+            frames.each(function () {
+                self.LayoutFrame($(this), frames, width, height, counter, cols, rows, w, h);
                 counter++;
             });
-        }
-    };
+        };
+    }
+
+    var recents = {};
+    var layout;// = new BaseLayout();
 
     function ApplyLayout() {
         console.log('applying layout');
-        if (layouts.hasOwnProperty(layout)) {
-            layouts[layout]();
+        if (layout && layout.ApplyLayout) {
+            layout.ApplyLayout();
         } else {
             console.log('unknown layout ' + layout + '!');
         }
+    }
+
+    function AddFrame(url) {
+        var m = url.match(/twitch\.tv\/(.+)/);
+        if (m && m.length == 2) {
+            url = m[1];
+        }
+
+        var lasttime = (new Date()).getTime();
+        recents[url.toLowerCase()] = { url: url, lasttime: lasttime };
+        CheckRecents(true);
+
+        var frame = $('<div class="frame"><iframe src="https://player.twitch.tv/?channel='
+            + url + '&volume=0.00&muted" frameborder="0" scrolling="no" allowfullscreen ></iframe></div>');
+
+        layout.AddFrame(url, frame);
+        ApplyLayout();
     }
 
     function CheckRecents(force) {
@@ -231,22 +340,22 @@
         if (!storedrecents || storedrecents == '') {
             storedrecents = '[]';
         }
-        var defaults = [{ channel: "morgalor", lasttime: "1" }, { channel: "GamesDoneQuick", lasttime: "1" }, { channel: "MegaBlast98", lasttime: "1" }, { channel: "ESL_SC2", lasttime: "1" }, { channel: "ESL_Overwatch", lasttime: "1" },
-        { channel: "cheese05", lasttime: "1" }, { channel: "RetroGamingLiveTV", lasttime: "1" }, { channel: "GOGcom", lasttime: "1" }, { channel: "360Chrism", lasttime: "1" }, { channel: "SpikeVegeta", lasttime: "1" },
-        { channel: "BaseTradeTV", lasttime: "1" }, { channel: "ByunPrime", lasttime: "1" }];
+        var defaults = [{ url: "morgalor", lasttime: "1" }, { url: "GamesDoneQuick", lasttime: "1" }, { url: "MegaBlast98", lasttime: "1" }, { url: "ESL_SC2", lasttime: "1" }, { url: "ESL_Overwatch", lasttime: "1" },
+        { url: "cheese05", lasttime: "1" }, { url: "RetroGamingLiveTV", lasttime: "1" }, { url: "GOGcom", lasttime: "1" }, { url: "360Chrism", lasttime: "1" }, { url: "SpikeVegeta", lasttime: "1" },
+        { url: "BaseTradeTV", lasttime: "1" }, { url: "ByunPrime", lasttime: "1" }];
         storedrecents = $.parseJSON(storedrecents);
         storedrecents = [].concat(defaults, storedrecents);
         console.log(storedrecents);
         var change = false;
         for (var i = 0; i < storedrecents.length; i++) {
             var sr = storedrecents[i];
-            if (recents.hasOwnProperty(sr.channel.toLowerCase())) {
-                if (sr.lasttime > recents[sr.channel.toLowerCase()].lasttime) {
-                    recents[sr.channel.toLowerCase()].lasttime = sr.lasttime;
+            if (recents.hasOwnProperty(sr.url.toLowerCase())) {
+                if (sr.lasttime > recents[sr.url.toLowerCase()].lasttime) {
+                    recents[sr.url.toLowerCase()].lasttime = sr.lasttime;
                     change = true;
                 }
             } else {
-                recents[sr.channel.toLowerCase()] = sr;
+                recents[sr.url.toLowerCase()] = sr;
                 change = true;
             }
         }
@@ -269,121 +378,15 @@
 
         $('.recentstreams').html('');
         for (var i = 0; i < recents_a.length; i++) {
-            $('.recentstreams').append('<div class="recentstream">' + recents_a[i].channel + '</div>');
+            $('.recentstreams').append('<div class="recentstream">' + recents_a[i].url + '</div>');
         }
-        $('.recentstream').click(function () { AddStream($(this).text()); ApplyLayout(); $(this).val(''); });
-    }
-
-    function AddStream(channel) {
-        var m = channel.match(/twitch\.tv\/(.+)/);
-        if (m && m.length == 2) {
-            channel = m[1];
-        }
-        console.log('adding stream ' + channel);
-        views.push({ channel: channel });
-        $('.videos').append(
-            '<div class="videoframe" style="z-index:' + (10000 - views.length) + ';" data-priority="' + (views.length - 1) + '"><iframe src="https://player.twitch.tv/?channel='
-            + channel + '&volume=0.00&muted" frameborder="0" scrolling="no" allowfullscreen ></iframe></div>');
-
-        var lasttime = (new Date()).getTime();
-        recents[channel.toLowerCase()] = { channel: channel, lasttime: lasttime };
-        CheckRecents(true);
-
-        $(".videos .videoframe").off('mousedown mousemove mouseup mouseover mouseout');
-        $('.videos').off('mousemove');
-        $('.videos').mousemove(function (e) {
-            if (isDragging == false) return;
-            if (!draggingElement) {
-                isDragging = false;
-                return;
-            }
-            if (this != draggingElement) {
-                $(draggingElement).find('iframe').css('width', '');
-                $(draggingElement).find('iframe').css('height', '');
-                isDragging = false;
-                return;
-            }
-        });
-
-        $(".videos .videoframe")
-            .mouseover(function (e) {
-                $(this).css('padding', '50px');
-                $(this).find('iframe').css('padding', '50px');
-                $(this).css('z-index', '10000');
-            })
-            .mouseout(function (e) {
-                $(this).css('padding', '');
-                $(this).find('iframe').css('padding', '');
-                $(this).css('z-index', 10000 - 1 - parseInt($(this).attr('data-priority')));
-
-                if (isDragging) {
-                    isDragging = false;
-                    draggingElement = null;
-                    e.stopPropagation();
-                }
-            });
-
-
-        $(".videos .videoframe")
-            .mousedown(function (e) {
-                isDragging = true;
-
-                var position = $(this).offset();
-                var w = $(this).width();
-                var h = $(this).height();
-
-                startDragX = e.pageX - (position.left);
-                startDragY = e.pageY - (position.top);
-
-                draggingElement = this;
-
-                $(this).css('position', 'absolute');
-
-                var x = e.pageX - startDragX;
-                var y = e.pageY - startDragY;
-                $(this).css('top', y);
-                $(this).css('left', x);
-                e.stopPropagation();
-            })
-            .mousemove(function (e) {
-                if (isDragging == false) return;
-                if (!draggingElement) {
-                    isDragging = false;
-                    return;
-                }
-                if (this != draggingElement) {
-                    isDragging = false;
-                    return;
-                }
-                e.stopPropagation();
-
-                var w = $(this).width();
-                var h = $(this).height();
-
-                var x = e.pageX - startDragX;
-                var y = e.pageY - startDragY;
-                $(this).css('top', y);
-                $(this).css('left', x);
-            })
-            .mouseup(function (e) {
-                var wasDragging = isDragging;
-                isDragging = false;
-                if (wasDragging) {
-                    var x = e.pageX - startDragX;
-                    var y = e.pageY - startDragY;
-                    $(this).css('top', y);
-                    $(this).css('left', x);
-
-                    draggingElement = null;
-                    e.stopPropagation();
-                }
-            });
+        $('.recentstream').click(function () { AddFrame($(this).text()); });
     }
 
     function OnBodyLoad() {
         if (typeof (Storage) !== "undefined") {
-            layout = localStorage.getItem("layout");
-            if (!layout || layout == '') layout = 'tile';
+            var layoutname = localStorage.getItem("layout");
+            if (!layoutname || layoutname == '') layout = new BaseLayout();
         }
         CheckRecents(true);
         setInterval(function () { CheckRecents() }, 10000);
@@ -394,33 +397,36 @@
         $('.expandbutton').click(function () {
             if ($('.rightpane').css('display') == 'none') {
                 $('.rightpane').css('display', 'block');
-                $('.videos').css('width', '86%');
+                $('.frames').css('width', '86%');
                 $('.expandbutton i').attr('class', 'icon-fixed-width icon-arrow-right');
             } else {
                 $('.rightpane').css('display', 'none');
-                $('.videos').css('width', '100%');
+                $('.frames').css('width', '100%');
                 $('.expandbutton i').attr('class', 'icon-fixed-width icon-arrow-left');
             }
             ApplyLayout();
         });
-        $('.videos').html('');
+        $('.frames').html('');
         ApplyLayout();
 
-        $('.layout').click(function () { layout = $(this).text().toLowerCase(); ApplyLayout(); });
-        $('.addstreaminput').submit(function () { AddStream($(this).val()); ApplyLayout(); });
+        $('.layout').click(function () {
+            var layoutname = $(this).text().toLowerCase();
+            ApplyLayout();
+        });
+
+        $('.addstreaminput').submit(function () { AddFrame($(this).val()); });
         $('.addstreaminput').keyup(function (e) {
             if (e.keyCode == 13) {
-                AddStream($(this).val());
-                ApplyLayout();
+                AddFrame($(this).val());
                 $(this).val('');
             }
         });
 
-        $('input.overlaprange').val(overlappercent);
+        $('input.overlaprange').val(layout.overlappercent);
 
         $('input.overlaprange').change(function () {
-            overlappercent = parseInt($(this).val());
-            console.log('overlappercent == ' + overlappercent + '%');
+            layout.overlappercent = parseInt($(this).val());
+            console.log('overlappercent == ' + layout.overlappercent + '%');
             ApplyLayout();
         });
     }
