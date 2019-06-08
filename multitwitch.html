@@ -1,6 +1,7 @@
 ﻿<!DOCTYPE html>
 <html lang="en">
 <head>
+    <!-- https://github.com/Die4Ever/multitwitch -->
     <meta charset="utf-8">
     <meta http-equiv="X-UA-Compatible" content="IE=edge">
     <title>Wow Much Twitch</title>
@@ -95,14 +96,17 @@
         }
     </style>
 </head>
-<body onload="OnBodyLoad();" class='theme-dark homepage'>
+<body class='theme-dark homepage'>
 
     <span class="expandbutton"><i class="icon-fixed-width icon-arrow-right"></i></span>
     <div class="rightpane">
         <br /><div><input class="addstreaminput" placeholder="Add Stream" /></div><div class="recentstreams"><h2>Recent Streams</h2></div>
         <div class="layouts">
             <h2>Layouts</h2>
+            <div class="layout">FlexGrid</div>
             <div class="layout">Tile</div>
+            <div class="layout">Flex</div>
+            <div class="layout">Table (coming soon)</div>
             <div class="soonlayout">Big View (coming soon)</div>
             <div class="soonlayout">Custom (coming soon)</div>
         </div>
@@ -117,8 +121,43 @@
 <script type="text/javascript">
 
     class BaseLayout {
-        constructor() {
+        constructor(oldlayout) {
             this.name = 'BaseLayout';
+            this.frames_el = $('.frames');
+            this.frames_el.empty();
+            if (oldlayout && oldlayout.views) {
+                this.views = oldlayout.views;
+            }
+            else
+                this.views = [];
+        }
+
+        ReaddFrames() {
+            this.frames_el.empty();
+            for (var i in this.views) {
+                var v = this.views[i];
+                this.AddFrame(v.url, v.frame);
+                this.views.pop();
+            }
+        };
+
+        AddFrame(url, frame) {
+            console.error('AddFrame is not implemented for layout ' + this.name);
+        };
+
+        LayoutFrame(el, frames, width, height, counter, cols, rows, w, h) {
+            console.error('LayoutFrame is not implemented for layout ' + this.name);
+        };
+
+        ApplyLayout() {
+            console.error('ApplyLayout is not implemented for layout ' + this.name);
+        };
+    }
+
+    class TileLayout extends BaseLayout {
+        constructor(oldlayout) {
+            super(oldlayout);
+            this.name = 'TileLayout';
             this.isDragging = false;
             this.isSizingX = false;
             this.isSizingY = false;
@@ -126,21 +165,24 @@
             this.startDragX = 0;
             this.startDragY = 0;
             this.overlappercent = 0;
-            this.views = [];
+            this.frames_el.css({ 'display': 'block' });
+            this.ReaddFrames();
         }
 
         AddFrame(url, frame) {
             var self = this;
 
             console.log('adding frame ' + url);
-            self.views.push({ url: url });
+            this.views.push({ url: url, frame: frame });
+            frame = frame.clone(true, true);
+            this.frames_el.css({ 'display': 'block' });
 
             frame.css({ 'z-index': (10000 - self.views.length) }).attr('data-priority', self.views.length - 1);
-            $('.frames').append(frame);
+            this.frames_el.append(frame);
 
-            $(".frames .frame").off('mousedown mousemove mouseup mouseover mouseout');
-            $('.frames').off('mousemove');
-            $('.frames').mousemove(function (e) {
+            this.frames_el.find(".frame").off('mousedown mousemove mouseup mouseover mouseout');
+            this.frames_el.off('mousemove');
+            this.frames_el.mousemove(function (e) {
                 if (self.isDragging == false) return;
                 if (!self.draggingElement) {
                     self.isDragging = false;
@@ -154,7 +196,7 @@
                 }
             });
 
-            $(".frames .frame")
+            this.frames_el.find(".frame")
                 .mouseover(function (e) {
                     $(this).css('padding', '50px');
                     $(this).find('iframe').css('padding', '50px');
@@ -173,7 +215,7 @@
                 });
 
 
-            $(".frames .frame")
+            this.frames_el.find(".frame")
                 .mousedown(function (e) {
                     self.isDragging = true;
 
@@ -227,7 +269,7 @@
                         e.stopPropagation();
                     }
                 });
-        }
+        };
 
         LayoutFrame(el, frames, width, height, counter, cols, rows, w, h) {
             el.css('position', 'absolute');
@@ -255,14 +297,14 @@
         };
 
         ApplyLayout() {
-            var frames = $('.frames .frame');
+            var frames = this.frames_el.find(".frame");
             if (frames.length == 0) return;
             var div = Math.sqrt(frames.length);
             var width = 100 / Math.ceil(div);
             var height = 100 / Math.ceil(div);
-            var h = $('.frames').height();
+            var h = this.frames_el.height();
             h = $(window).height();
-            var w = $('.frames').width();
+            var w = this.frames_el.width();
 
             var counter = 0;
             var rows = Math.ceil(div);
@@ -306,6 +348,83 @@
         };
     }
 
+    class Flex extends BaseLayout {
+        constructor(oldlayout) {
+            super(oldlayout);
+            this.name = 'Flex';
+            this.frames_el.css({ 'display': 'flex' });
+            this.ReaddFrames();
+        }
+
+        AddFrame(url, frame) {
+            var self = this;
+
+            console.log('adding frame ' + url);
+            self.views.push({ url: url, frame: frame });
+            frame = frame.clone(true, true);
+
+            frame.css({ 'z-index': (10000 - self.views.length) }).attr('data-priority', self.views.length - 1);
+            frame.css({ 'flex': 1 });
+            this.frames_el.append(frame);
+        };
+    }
+
+    class FlexGrid extends Flex {
+        //use css flex, but also break into multiple rows dynamically
+        constructor(oldlayout) {
+            super(oldlayout);
+            this.name = 'FlexGrid';
+            this.frames_el.css({ 'display': 'block' });
+            //this.last_frames = 0;
+            this.ReaddFrames();
+        }
+
+        AddFrame(url, frame) {
+            var self = this;
+
+            console.log('adding frame ' + url);
+            self.views.push({ url: url, frame: frame });
+            frame = frame.clone(true, true);
+
+            frame.css({ 'z-index': (10000 - self.views.length) }).attr('data-priority', self.views.length - 1);
+            frame.css({ 'flex': 1 });
+            this.frames_el.append(frame);
+        };
+
+        ApplyLayout() {
+            var frames = this.frames_el.find(".frame");
+            if (frames.length == 0) return;
+            var div = Math.sqrt(frames.length);
+            console.log('div==' + div);
+            div = Math.round(div);
+            var h = this.frames_el.height();
+            var height = h / div;
+            var max_frames_per_row = Math.ceil(frames.length / div);
+
+            var counter = 1;
+            var self = this;
+            var el;
+            frames.each(function () {
+                if (!el || counter % max_frames_per_row === 1) {
+                    el = $('<div>').addClass('flexbox').css({ 'display': 'flex', 'height': height+'px' });
+                    self.frames_el.append( el );
+                }
+                el.append($(this));
+                counter++;
+            });
+            self.frames_el.find('.flexbox:empty').remove();
+        }
+    }
+
+    class TableLayout extends BaseLayout {
+        //this will be like a table with borders that you can grab for resizing
+        constructor(oldlayout) {
+            super(oldlayout);
+            this.name = 'TableLayout';
+            this.ReaddFrames();
+        }
+    }
+
     var recents = {};
     var layout;// = new BaseLayout();
 
@@ -319,20 +438,52 @@
     }
 
     function AddFrame(url) {
-        var m = url.match(/twitch\.tv\/(.+)/);
-        if (m && m.length == 2) {
-            url = m[1];
+        var frame;
+        var attrs = '';
+        var domain = 'twitch.tv';
+        var m = url.match(/^(http(s?))\:\/\/([^\/]+)(\/(.*))?$/);
+        var recent = url;
+        console.log('AddFrame '+url, JSON.stringify(m));
+        if (m) {
+            var protocol = m[1];
+            domain = m[3];
+            var path = m[5];
+
+            if (domain === 'twitch.tv' || domain === 'www.twitch.tv' || domain === 'player.twitch.tv') {
+                recent = path;
+                url = 'https://player.twitch.tv/?channel=' + path + '&volume=0.20&muted';
+                attrs = 'frameborder="0" scrolling="no" allowfullscreen';
+            }
+        } else {
+            //assume it's a twitch channel
+            recent = url;
+            url = 'https://player.twitch.tv/?channel=' + url + '&volume=0.20&muted';
+            attrs = 'frameborder="0" scrolling="no" allowfullscreen';
         }
 
         var lasttime = (new Date()).getTime();
-        recents[url.toLowerCase()] = { url: url, lasttime: lasttime };
+        recents[recent.toLowerCase()] = { url: recent, lasttime: lasttime };
         CheckRecents(true);
 
-        var frame = $('<div class="frame"><iframe src="https://player.twitch.tv/?channel='
-            + url + '&volume=0.00&muted" frameborder="0" scrolling="no" allowfullscreen ></iframe></div>');
+        frame = $('<div class="frame"><iframe src="'+ url + '" '+attrs+' ></iframe></div>');
 
         layout.AddFrame(url, frame);
         ApplyLayout();
+    }
+
+    function ChangeLayout(layoutname) {
+        var oldlayout = layout;
+        if(layoutname) layoutname = layoutname.toLowerCase();
+        if (layoutname === 'tile') layout = new TileLayout(oldlayout);
+        else if (layoutname === 'flex') layout = new Flex(oldlayout);
+        else if (layoutname === 'flexgrid') layout = new FlexGrid(oldlayout);
+        else if (layoutname === 'table') layout = new TableLayout(oldlayout);
+        else if (!layoutname || !layout || layoutname == '') layout = new FlexGrid(oldlayout);
+
+        if (oldlayout && oldlayout !== layout) {
+
+            ApplyLayout();
+        }
     }
 
     function CheckRecents(force) {
@@ -383,13 +534,12 @@
         $('.recentstream').click(function () { AddFrame($(this).text()); });
     }
 
-    function OnBodyLoad() {
+    $(function () {
         if (typeof (Storage) !== "undefined") {
-            var layoutname = localStorage.getItem("layout");
-            if (!layoutname || layoutname == '') layout = new BaseLayout();
+            ChangeLayout(localStorage.getItem("layout"));
         }
         CheckRecents(true);
-        setInterval(function () { CheckRecents() }, 10000);
+        setInterval(function () { CheckRecents() }, 60000);
 
         $(window).on('resize', function () {
             ApplyLayout();
@@ -410,8 +560,7 @@
         ApplyLayout();
 
         $('.layout').click(function () {
-            var layoutname = $(this).text().toLowerCase();
-            ApplyLayout();
+            ChangeLayout($(this).text().toLowerCase());
         });
 
         $('.addstreaminput').submit(function () { AddFrame($(this).val()); });
@@ -429,6 +578,6 @@
             console.log('overlappercent == ' + layout.overlappercent + '%');
             ApplyLayout();
         });
-    }
+    });
 
 </script>
