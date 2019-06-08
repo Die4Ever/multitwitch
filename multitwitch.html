@@ -54,9 +54,7 @@
             'tileold': function () {
                 var videos = $('.videos .videoframe');
                 if (videos.length == 0) return;
-                //var div = Math.log2(videos.length) + 1;
                 var div = Math.sqrt(videos.length);
-                //div = Math.ceil(div);
                 var width = 100 / Math.ceil(div);
                 var height = 100 / Math.round(div);
                 if (videos.length <= 2) height = 100;
@@ -74,12 +72,9 @@
             'tile': function () {
                 var videos = $('.videos .videoframe');
                 if (videos.length == 0) return;
-                //var div = Math.log2(videos.length) + 1;
                 var div = Math.sqrt(videos.length);
-                //div = Math.ceil(div);
                 var width = 100 / Math.ceil(div);
                 var height = 100 / Math.ceil(div);
-                //if (videos.length == 2) height = 50;
                 var h = $('.videos').height();
                 h = $(window).height();
                 var w = $('.videos').width();
@@ -113,11 +108,10 @@
 
                 width = w / cols;
                 height = h / rows;
-                width *= (100 + overlappercent)/100;//1.3;
-                height *= (100 + overlappercent) / 100;//1.3;
+                width *= (100 + overlappercent)/100;
+                height *= (100 + overlappercent) / 100;
                 height = Math.min(height, width * (9/16) );
                 width = Math.min(width, height * (16/9) );
-                //height = width * 0.5625;
 
                 videos.each(function () {
                     $(this).css('position', 'absolute');
@@ -128,59 +122,22 @@
                     x *= w / cols;
                     y *= h / rows;
 
-                    //$(this).css('top', width + 'px');
-
-                    /*$(this).css('height', (height + height / 3) + '%');
-                    $(this).css('width', (width + width / 2.5) + '%');
-                    $(this).css('margin-right', (height / -2.5) + '%');
-                    $(this).css('margin-bottom', (height / -5) + '%');*/
-
                     x -= (width * 0.2) * (overlappercent / 100);
                     y -= (height * 0.1) * (overlappercent / 100);
                     if (videos.length == 2 && rows==1 && cols==2 && parseInt($(this).attr('data-priority')) % 2 == 1) {
-                        //$(this).css('top', '');
-                        //$(this).css('top', (height / 2) + '%');
-                        //$(this).css('left', (height / -5) + '%');
-                        //y += (h - height);
                         y = h - height;
-                        //x -= (width * 0.25) * (overlappercent / 100);
                         x = w - width;
-                        //x -= (width * 0.2)*(overlappercent/100);
                     } else if (videos.length == 2 && rows == 2 && cols == 1 && parseInt($(this).attr('data-priority')) % 2 == 1) {
                         x += (w - width) + (width * 0.4) * (overlappercent / 100);
                         y -= (height * 0.5) * (overlappercent / 100);
-                        //y = h / rows;
                     } else if (videos.length == 2) {
-                        //$(this).css('top', (height / -10) + '%');
-                        //$(this).css('left', '');
                     } else {
-                        //$(this).css('top', '');
-                        //$(this).css('left', '');
                     }
 
                     $(this).css('left', x + 'px');
                     $(this).css('top', y + 'px');
-                    //if(parseInt($(this).attr('data-priority')) > 0 ) $(this).css('margin', (height / -8) + '%');
                     counter++;
                 });
-                /*videos.each(function () {
-                    $(this).css('height', (height+height/ 3) + '%');
-                    $(this).css('width', (width + width / 2.5) + '%');
-                    $(this).css('margin-right', (height / -2.5) + '%');
-                    $(this).css('margin-bottom', (height / -5) + '%');
-                    if (videos.length == 2 && parseInt($(this).attr('data-priority')) % 2 == 1) {
-                        //$(this).css('top', '');
-                        $(this).css('top', (height / 2) + '%');
-                        $(this).css('left', (height / -5) + '%');
-                    } else if(videos.length==2) {
-                        $(this).css('top', (height / -10) + '%');
-                        $(this).css('left', '');
-                    } else {
-                        $(this).css('top', '');
-                        $(this).css('left', '');
-                    }
-                    //if(parseInt($(this).attr('data-priority')) > 0 ) $(this).css('margin', (height / -8) + '%');
-                });*/
             }
         };
 
@@ -203,8 +160,6 @@
             var defaults = [{ channel: "morgalor", lasttime: "1" }, { channel: "GamesDoneQuick", lasttime: "1" }, { channel: "MegaBlast98", lasttime: "1" }, { channel: "ESL_SC2", lasttime: "1" }, { channel: "ESL_Overwatch", lasttime: "1" },
             { channel: "cheese05", lasttime: "1" }, { channel: "RetroGamingLiveTV", lasttime: "1" }, { channel: "GOGcom", lasttime: "1" }, { channel: "360Chrism", lasttime: "1" }, { channel: "SpikeVegeta", lasttime: "1" },
             { channel: "BaseTradeTV", lasttime: "1" }, { channel: "ByunPrime", lasttime: "1" }];
-            //storedrecents='[]';
-            //storedrecents = JSON.stringify([{ channel: "morgalor", lasttime: "1" }, { channel: "GamesDoneQuick", lasttime: "1" }]);
             storedrecents = $.parseJSON(storedrecents);
             storedrecents = [].concat(defaults,storedrecents);
             console.log(storedrecents);
@@ -282,12 +237,8 @@
                 $(this).css('padding', '50px');
                 $(this).find('iframe').css('padding', '50px');
                 $(this).css('z-index', '10000');
-                //$(this).find('iframe').css('width', '75%');
-                //$(this).find('iframe').css('height', '75%');
             })
             .mouseout(function (e) {
-                //$(this).find('iframe').css('width', '');
-                //$(this).find('iframe').css('height', '');
                 $(this).css('padding', '');
                 $(this).find('iframe').css('padding', '');
                 $(this).css('z-index', 10000 - 1 - parseInt($(this).attr('data-priority')));
@@ -295,9 +246,6 @@
                 if (isDragging) {
                     isDragging = false;
                     draggingElement = null;
-                    //$(this).css('padding', '');
-                    //$(this).find('iframe').css('width', '');
-                    //$(this).find('iframe').css('height', '');
                     e.stopPropagation();
                 }
             });
@@ -313,17 +261,10 @@
 
                 startDragX = e.pageX - (position.left);
                 startDragY = e.pageY - (position.top);
-                //startDragX = Math.round( ((e.pageX - position.left)*4 + (w / 10)) / 5);
-                //startDragY = Math.round(((e.pageY - position.top)*4 + (h / 10)) / 5);
 
                 draggingElement = this;
 
                 $(this).css('position', 'absolute');
-                //$(this).css('padding', '100px');
-                //$(this).css('padding', '50px');
-                //$(this).find('iframe').css('padding', '100px');
-                //$(this).find('iframe').css('width', '10px');
-                //$(this).find('iframe').css('height', '10px');
 
                 var x = e.pageX - startDragX;
                 var y = e.pageY - startDragY;
@@ -338,10 +279,6 @@
                     return;
                 }
                 if (this != draggingElement) {
-                    //$(draggingElement).find('iframe').css('width', '');
-                    //$(draggingElement).find('iframe').css('height', '');
-                    //$(draggingElement).css('padding', '');
-                    //$(draggingElement).find('iframe').css('padding', '');
                     isDragging = false;
                     return;
                 }
@@ -354,7 +291,6 @@
                 var y = e.pageY - startDragY;
                 $(this).css('top', y);
                 $(this).css('left', x);
-                //console.log('move!');
             })
             .mouseup(function (e) {
                 var wasDragging = isDragging;
@@ -366,10 +302,6 @@
                     $(this).css('left', x);
 
                     draggingElement = null;
-                    //$(this).css('padding', '');
-                    //$(this).find('iframe').css('padding', '');
-                    //$(this).find('iframe').css('width', '');
-                    //$(this).find('iframe').css('height', '');
                     e.stopPropagation();
                 }
             });
@@ -386,7 +318,6 @@
 
             $(window).on('resize', function () {
                 ApplyLayout();
-                //<iframe src="https://player.twitch.tv/?channel=morgalor" frameborder="0" scrolling="no" height="378" width="620"></iframe><a href="https://www.twitch.tv/morgalor?tt_medium=live_embed&tt_content=text_link" style="padding:2px 0px 4px; display:block; width:345px; font-weight:normal; font-size:10px; text-decoration:underline;">Watch live video from Morgalor on www.twitch.tv</a>
             });
             $('.expandbutton').click(function () {
                 if ($('.rightpane').css('display') == 'none') {
@@ -401,21 +332,7 @@
                 ApplyLayout();
             });
             $('.videos').html('');
-            //$('.videos').append('<span class="expandbutton"><i class="icon-fixed-width icon-home"></i></span>');
-            //AddStream('morgalor');
-            //AddStream('deuceler');
             ApplyLayout();
-
-            /*$('.recentstreams').append('<div class="recentstream">megablast98</div>');
-            $('.recentstreams').append('<div class="recentstream">cheese05</div>');
-            $('.recentstreams').append('<div class="recentstream">gamesdonequick</div>');
-            $('.recentstreams').append('<div class="recentstream">ESL_SC2</div>');
-            $('.recentstreams').append('<div class="recentstream">ESL_Overwatch</div>');
-            $('.recentstreams').append('<div class="recentstream">RetroGamingLiveTV</div>');
-            $('.recentstreams').append('<div class="recentstream">GOGcom</div>');
-            $('.recentstreams').append('<div class="recentstream">TASReplay</div>');
-
-            $('.recentstream').click(function () { AddStream($(this).text()); ApplyLayout(); $(this).val(''); });*/
 
             $('.layout').click(function () { layout = $(this).text().toLowerCase(); ApplyLayout(); });
             $('.addstreaminput').submit(function () { AddStream($(this).val()); ApplyLayout(); });
